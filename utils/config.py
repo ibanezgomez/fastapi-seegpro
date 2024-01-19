@@ -43,4 +43,4 @@ class Config(BaseSettings):
         return self.db
 
 config = Config()
-config.set_db_settings()
+#config.set_db_settings()
