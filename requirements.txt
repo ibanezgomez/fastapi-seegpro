@@ -1,1 +1,16 @@
-fastapi[all]
+fastapi==0.103.2
+fastapi-cors==0.0.6
+logging_json==0.3.0
+pydantic==2.4.2
+pytz==2022.7.1
+requests==2.31.0
+SQLAlchemy==2.0.15
+uvicorn==0.22.0
+validators==0.20.0
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.6
+passlib[bcrypt]==1.7.4
+psycopg2-binary==2.9.6
+kubernetes==26.1.0
+urllib3==1.26.7
+pydantic-settings==2.0.3
