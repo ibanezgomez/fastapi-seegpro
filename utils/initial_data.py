@@ -10,6 +10,7 @@ from utils.logger import log
 from utils.session import SessionFactory, getEngine
 
 def initAndPopulate():
+
     """Create al the tables related with models in models folder """
     try:
         session = SessionFactory()
@@ -21,6 +22,7 @@ def initAndPopulate():
         #TODO Revisar en config si ya se han insertado
 
         #Populate initial data with settings file
+
         initial_data_objects = {"SettingModel": []}
         try:
             with open(f"settings/settings-{config.env.lower()}.json") as file: settings = json.load(file)

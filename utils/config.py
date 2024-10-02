@@ -43,4 +43,11 @@ class Config(BaseSettings):
         return self.db
 
 config = Config()
+<<<<<<< HEAD
 config.set_db_settings()
+=======
+try:
+    config.set_db_settings()
+except:
+    print("Config from BBDD can't be loaded. Its ok if first start")
+>>>>>>> 8cb1bbc (Fix BBDD)

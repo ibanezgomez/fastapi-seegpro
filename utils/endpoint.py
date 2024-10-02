@@ -5,7 +5,6 @@ from schemas.base import *
 
 # Evita duplicar código en diferentes endpoints y trae funciones por defecto
 class EndpointInstance:
-    print("EndpointInstance")
     def getDefaultMethodsMetadata(self):
         return {
             'GET'    : { 'summary': "GET default summary",    'description': "Undefined GET description"},
