@@ -17,7 +17,7 @@ for l in config.whoami.asText(show_env=True, show_plain_secrets=False).split('\n
     log.info(l, action="[main]")
 
 # Init FastAPI
-app = FastAPI(title="mepillas", docs_url=config.docs_path, openapi_url=config.docs_path+"/openapi.json", swagger_ui_parameters={"defaultModelsExpandDepth": -1}, version=config.version)
+app = FastAPI(title=config.name, docs_url=config.docs_path, openapi_url=config.docs_path+"/openapi.json", swagger_ui_parameters={"defaultModelsExpandDepth": -1}, version=config.version)
     
 # Middlewares
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
