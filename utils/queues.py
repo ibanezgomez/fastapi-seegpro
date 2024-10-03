@@ -25,8 +25,8 @@ class TaskQueue:
     
     #Queue process
     def start(self):
-        max_inactive_retries = int(config.settings.get("DB_MANAGER_QUEUE_INACTIVE_RETRIES"))
-        query_db_wait_time = config.settings.get("DB_MANAGER_QUEUE_DB_WAIT_TIME")
+        max_inactive_retries = int(config.db.get("DB_MANAGER_QUEUE_INACTIVE_RETRIES"))
+        query_db_wait_time = config.db.get("DB_MANAGER_QUEUE_DB_WAIT_TIME")
         log.info(action="[%s]" % self.name, message="Thread created and ready for execute tasks")
         
         inactive_counter = 0

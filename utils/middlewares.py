@@ -22,6 +22,5 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
             client = remote_addr+'-'+request.state.client.id
         except: 
             client = remote_addr+'-unknown'
-        print("asdfasdf")
         log.info(log_message, action=request_line, client=client)
         return response

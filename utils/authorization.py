@@ -7,7 +7,3 @@ def allowADFS(client: ClientSchema):
 def allowLocal(client: ClientSchema):
     if client.provider in ['local']: return True
     else: return False
-
-    
-
-

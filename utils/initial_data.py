@@ -3,7 +3,7 @@ from utils.config import config
 from sqlalchemy import exc
 from services.auth import pwd_context
 from models.base import SQLModel
-from models.tech import TechModel
+from models.example import ExampleModel
 from models.setting import SettingModel
 from models.client import ClientModel
 from utils.logger import log
@@ -19,10 +19,7 @@ def initAndPopulate():
         #Create tables
         SQLModel.metadata.create_all(engine)
 
-        #TODO Revisar en config si ya se han insertado
-
         #Populate initial data with settings file
-
         initial_data_objects = {"SettingModel": []}
         try:
             with open(f"settings/settings-{config.env.lower()}.json") as file: settings = json.load(file)
@@ -56,18 +53,11 @@ def initAndPopulate():
 ##### INITIAL DATA #####
 initialData = {
     "ClientModel": [
-        ClientModel(id=config.secrets.def_client_id, desc="Usuario para autenticar desde los engines", provider="local", permissions={}, 
-                    hashed_password=pwd_context.hash(config.secrets.def_client_secret))
+        ClientModel(id=config.secrets.default_user, desc="Usuario default", provider="local", permissions={}, 
+                    hashed_password=pwd_context.hash(config.secrets.default_pass))
     ],
-    "TechModel": [
-        TechModel(id="undefined", group="undefined", default=True),
-        TechModel(id="java", group="back", default=True),
-        TechModel(id="typescript", group="front", default=True),
-        TechModel(id="swift", group="ios", default=True),
-        TechModel(id="kotlin", group="android", default=True),
-        TechModel(id="python", group="back", default=False),
-        TechModel(id="php", group="back", default=False),
-        TechModel(id="html", group="front", default=False)
+    "ExampleModel": [
+        ExampleModel(id=1, name="Example1", description="Is an example", active=True)
     ]
 }
 

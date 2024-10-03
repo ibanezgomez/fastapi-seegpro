@@ -7,10 +7,12 @@ from schemas.base import *
 class EndpointInstance:
     def getDefaultMethodsMetadata(self):
         return {
-            'GET'    : { 'summary': "GET default summary",    'description': "Undefined GET description"},
-            'POST'   : { 'summary': "POST default summary",   'description': "Undefined POST description"},
-            'PUT'    : { 'summary': "PUT default summary",    'description': "Undefined PUT description"},
-            'DELETE' : { 'summary': "DELETE default summary", 'description': "Undefined DELETE description"}
+                "GET": {"summary": "GET default summary", "description": "Undefined GET description"},
+                "POST": {"summary": "POST default summary", "description": "Undefined POST description",},
+                "PUT": {"summary": "PUT default summary", "description": "Undefined PUT description"},
+                "DELETE": {"summary": "DELETE default summary", "description": "Undefined DELETE description"},
+                "PATCH": {"summary": "PATCH default summary", "description": "Undefined PATCH description",
+            }
         }
     
     def getDefaultResponses(self):
@@ -25,10 +27,21 @@ class EndpointInstance:
             503: {'model': ServiceUnavailableResponse}
         }
 
-    def GET(self, request: Request):    return self.defaultResponse(request, "method GET not implemented")
-    def POST(self, request: Request):   return self.defaultResponse(request, "method POST not implemented")
-    def PUT(self, request: Request):    return self.defaultResponse(request, "method PUT not implemented")
-    def DELETE(self, request: Request): return self.defaultResponse(request, "method DELETE not implemented")
+    def GET(self, request: Request):
+        return self.defaultResponse(request, "method GET not implemented")
+
+    def POST(self, request: Request):
+        return self.defaultResponse(request, "method POST not implemented")
+
+    def PUT(self, request: Request):
+        return self.defaultResponse(request, "method PUT not implemented")
+
+    def DELETE(self, request: Request):
+        return self.defaultResponse(request, "method DELETE not implemented")
+
+    def PATCH(self, request: Request):
+        return self.defaultResponse(request, "method PATCH not implemented")
+
     def defaultResponse(self, request: Request, message: str):
         request_data = {
             "method": request.method,

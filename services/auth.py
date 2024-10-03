@@ -15,7 +15,6 @@ from utils.enums import AuthStatus
 from utils.logger import log
 from utils.config import config as cfg
 
-
 TOKEN = cfg.secrets.shared_seed
 API_BASE_PATH = cfg.base_path
 TOKEN_TYPE = "bearer"

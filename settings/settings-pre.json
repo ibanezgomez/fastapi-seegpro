@@ -1,7 +1,7 @@
 {
-    "DB_ACTIVE":           true,
-    "DB_INACTIVE_MESSAGE": "Service Unavailable",
-    "DB_TELEGRAM_CHAT_ID": "",
-    "DB_TELEGRAM_ENABLED": true,
+    "DB_ACTIVE":                true,
+    "DB_INACTIVE_MESSAGE":      "Service Unavailable",
+    "DB_TELEGRAM_CHAT_ID":      "",
+    "DB_TELEGRAM_ENABLED":      true,
     "DB_TOKEN_EXPIRATION_TIME": 60
 }

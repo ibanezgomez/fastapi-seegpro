@@ -23,12 +23,12 @@ class  NotificationServiceLocal():
         message = notification_data.message
         level   = notification_data.level.value
 
-        if not config.settings.get("DB_TELEGRAM_ENABLED", False):
+        if not config.db.get("DB_TELEGRAM_ENABLED", False):
             log.error(action="[NOTIFICATION]", message=f"Telegram is not enabled. Could not notify to {level} group: {message}")
             return SuccessResponse(message="OK", data={"status":"Telegram notification disabled"})
         
-        token   = config.whoami.getEnvVar("SECRET_TELEGRAM_TOKEN")
-        chat_id = config.settings.get(f"DB_TELEGRAM_CHATID_{level}")
+        token   = config.secrets.telegram_token
+        chat_id = config.db.get(f"DB_TELEGRAM_CHATID_{level}")
 
         Daemon(func=Telegram(chat_id=chat_id, token=token).send, args=message).start()
 

@@ -1,4 +1,3 @@
-from sqlalchemy import select
 from schemas.base import SuccessResponse
 from services.base import BaseDataManager, BaseService
 from fastapi import Request

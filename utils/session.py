@@ -5,7 +5,6 @@ from sqlalchemy.pool import NullPool
 from utils.config import config
 
 def getEngine():
-    #print(config.secrets.db_url)
     return create_engine(config.secrets.db_url, poolclass=NullPool)
 
 def createSession() -> Iterator[Session]:

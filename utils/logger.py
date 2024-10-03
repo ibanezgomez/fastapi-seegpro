@@ -17,21 +17,7 @@ class Logger:
         self.format   = None
         self.instance = None
         self.client   = None
-
-        env_format="string"
-        try: 
-            if config.whoami.getEnvVar("CM_LOG_FORMAT"): 
-                env_format = config.whoami.getEnvVar("CM_LOG_FORMAT")
-        except: 
-            pass
-
-        env_level='DEBUG'
-        try: 
-            if config.whoami.getEnvVar("CM_LOG_LEVEL"): 
-                env_level = config.whoami.getEnvVar("CM_LOG_LEVEL")
-        except: 
-            pass
-        self.setup(level=env_level, format=env_format)
+        self.setup(level=config.log_level, format=config.log_format)
 
     def _getJSONLogger(self):
         log_json = logging.getLogger("sysloger")

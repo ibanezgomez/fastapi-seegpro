@@ -11,4 +11,3 @@ class StatusService(BaseService):
             return SuccessResponse(message="Healthy!", data={"status":"RUNNING"})
         else:
             raise CustomException(SettingService(self.session).get_setting(id="DB_INACTIVE_MESSAGE"), None, 503)
-        return SuccessResponse(message="Healthy!", data={"status":"RUNNING"})
