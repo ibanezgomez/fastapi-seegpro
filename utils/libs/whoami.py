@@ -33,11 +33,12 @@ class Whoami:
         if show_env:
             result += "App env variables:\n"
             for clave, valor in os.environ.items():
-                if 'APP_SECRET_' in clave and not show_plain_secrets:
-                    primeros_tres_caracteres = valor[:3]
-                    valor = primeros_tres_caracteres + '*' * (len(valor) - 3)
-                    result += ('\t%s = %s\n' % (clave, valor))
-                else:
-                    result += ('\t%s = %s\n' % (clave, valor))    
+                if "APP" in clave:
+                    if 'APP_SECRET_' in clave and not show_plain_secrets:
+                        primeros_tres_caracteres = valor[:3]
+                        valor = primeros_tres_caracteres + '*' * (len(valor) - 3)
+                        result += ('\t%s = %s\n' % (clave, valor))
+                    else:
+                        result += ('\t%s = %s\n' % (clave, valor))    
         result += "------------------------- WHOAMI -------------------------"
         return result

@@ -52,3 +52,9 @@ class ServiceUnavailableResponse(BaseModel):
     success: bool = Field(False)
     message: str  = Field('Service Unavailable')
     data:    Optional[Any]
+
+class DeletionResult(BaseModel):
+    total_items: int
+
+class DeletionResponse(SuccessResponse):
+    data: DeletionResult

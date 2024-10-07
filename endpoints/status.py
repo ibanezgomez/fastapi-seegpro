@@ -9,7 +9,6 @@ from schemas.auth import ClientSessionSchema
 from utils.config import config
 from utils.endpoint import EndpointInstance
 from utils.session import createSession
-from utils.authorization import allowLocal
 from utils.depends import get_current_db_settings
 from schemas.base import SuccessResponse
 

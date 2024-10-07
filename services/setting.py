@@ -1,5 +1,5 @@
 from sqlalchemy import select
-from typing import Any, Dict
+from typing import Any, Dict, List
 from models.setting import SettingModel
 from utils.session import SessionFactory
 from services.base import BaseDataManager, BaseService
@@ -23,6 +23,6 @@ class SettingDataManager(BaseDataManager):
         model = self.get_one(stmt)
         return model
     
-    def get_settings(self, **kwargs) -> SettingModel:
-        model = self.get_all(select(SettingModel))
-        return model
+    def get_settings(self, **kwargs) -> List[SettingModel]:
+        models = self.get_all(select(SettingModel))
+        return models

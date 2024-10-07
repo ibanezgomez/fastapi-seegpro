@@ -1,17 +1,21 @@
-from typing import Any, List, Sequence, Type, Optional
-from sqlalchemy import func, select, update
+import math, traceback
+from typing import Any, List, Sequence, Type
+from pydantic import BaseModel
+from sqlalchemy import func, select, update, not_, delete
 from sqlalchemy.orm import Session
-from sqlalchemy.sql.expression import Executable, BinaryExpression
-from models.base import SQLModel
-import math
-from schemas.base import PaginationResult
-from fastapi.responses import JSONResponse
-from utils.endpoint import EndpointInstance
+from sqlalchemy.sql.expression import Executable
 from sqlalchemy.exc import IntegrityError
-import traceback
+from models.base import SQLModel
+from fastapi.responses import JSONResponse
+ 
+from utils.endpoint import EndpointInstance
 from utils.exceptions import CustomException
-from schemas.auth import ClientSessionSchema, ClientSchema
 from utils.logger import log
+
+from schemas.auth import ClientSessionSchema, ClientSchema
+from schemas.base import PaginationResult, DeletionResult
+
+from schemas.query_filter import validate_filters
 
 class SessionMixin:
     """Provides instance of database session."""
@@ -36,6 +40,14 @@ class BaseService(SessionMixin):
         for m in models:
             schemas += [m.to_schema(schema=schema, relation_populate=relation_populate)]
         return schemas
+
+    def FilterValidator(func):
+        def wrapper(self, *args, **kwargs):
+            if "filters" in kwargs:
+                kwargs["filters"] = validate_filters(kwargs["filters"])
+            return func(self, *args, **kwargs)
+
+        return wrapper
 
     def IsAuthenticated(func):
         def wrapper(self, *args, **kwargs):
@@ -71,6 +83,44 @@ class BaseService(SessionMixin):
 class BaseDataManager(SessionMixin):
     """Base data manager class responsible for operations over database."""
 
+    #Basic CRUD operations
+    def basic_get_one(self, model: Type[SQLModel], **kwargs):
+        stmt = select(model).filter_by(**kwargs)
+        model = self.get_one(stmt)
+        return model
+
+    def basic_delete_one(self, model: Type[SQLModel], id):
+        stmt = select(model).where(model.id == id)
+        model = self.get_one(stmt)
+        if model:
+            self.delete_one(model)
+            return model
+        else:
+            raise CustomException(f"{model} with id {id} does not exists", None, 404)
+    
+    def basic_create_one(self, model: Type[SQLModel], data: BaseModel):
+        data_dict = data.model_dump()
+        model = model(**data_dict)
+        self.add_one(model)
+        return model
+
+    def basic_update_full_one(self, model: Type[SQLModel], id, data: BaseModel):
+        stmt = select(model).where(model.id == id)
+        model = self.get_one(stmt)
+        if model:
+            return self.update_one(model, data.model_dump())
+        else:
+            raise CustomException(f"{model} with id {id} does not exists", None, 404)
+    
+    def basic_update_partial_one(self, model: Type[SQLModel], id, data: BaseModel):
+        stmt = select(model).where(model.id == id)
+        model = self.get_one(stmt)
+        if model:
+            update_data = self.delete_null_attributes(input_data=data.model_dump())
+            return self.update_one(model=model, update_data=update_data)
+        else:
+            raise CustomException(f"{model} with id {id} does not exists", None, 404)
+
     def add_one(self, model: Any) -> None:
         self.session.add(model)
         self.session.commit()
@@ -82,6 +132,12 @@ class BaseDataManager(SessionMixin):
     def delete_one(self, model: Any) -> None:
         self.session.delete(model)
         self.session.commit()
+
+    def delete_all(self, model: Any) -> DeletionResult:
+        stmt = delete(model)
+        result = self.session.execute(stmt)
+        self.session.commit()
+        return DeletionResult(total_items=result.rowcount)
         
     def update_one(self, model: Any, update_data: dict) -> Any:
         stmt = update(type(model)).where(type(model).id == model.id).values(update_data)
@@ -92,12 +148,39 @@ class BaseDataManager(SessionMixin):
     def get_one(self, select_stmt: Executable) -> Any:
         return self.session.scalar(select_stmt)
 
-    def get_paginated(self, model: Type[SQLModel], page: int, per_page: int, filters: Optional[List[BinaryExpression]] = None) -> PaginationResult:
+    def apply_filters(self, query, model, filters_array):
+        action = "[apply_filters]"
+        try:
+            for filter in filters_array:
+                column = getattr(model, filter["field"])
+                match filter["operator"]:
+                    case "==":
+                        query = query.filter(column == filter["value"])
+                    case "!=":
+                        query = query.filter(column != filter["value"])
+                    case "contains":
+                        query = query.filter(column.ilike("%" + filter["value"] + "%"))
+                    case "not_contains":
+                        query = query.filter(not_(column.ilike("%" + filter["value"] + "%")))
+                    case "<":
+                        query = query.filter(column < filter["value"])
+                    case "<=":
+                        query = query.filter(column <= filter["value"])
+                    case ">":
+                        query = query.filter(column > filter["value"])
+                    case ">=":
+                        query = query.filter(column >= filter["value"])
+            return query
+        except Exception as e:
+            log.error(action=action, message=f"Error applying filters. Error: {e}")
+            raise CustomException(f"Error applying filters", None, 400)
+
+    def get_paginated(self, model: Type[SQLModel], page: int, per_page: int, filters: List[dict] = None) -> PaginationResult:
         query = self.session.query(model)
 
         # Aplicar filtros si se proporcionan
         if filters:
-            query = query.filter(*filters)
+            query = self.apply_filters(query, model, filters)
 
         total_items = query.count()
         total_pages = math.ceil(total_items / per_page)
@@ -141,4 +224,11 @@ class BaseDataManager(SessionMixin):
         stmt = select(fn(*args).table_valued(*model.fields()))
         return self.get_all(select(model).from_statement(stmt))
 
-    
+    # Return JSON without null values
+    def delete_null_attributes(self, input_data: dict) -> dict:
+        filtered_model = {k: v for k, v in input_data.items() if v is not None}
+        return filtered_model
+
+    # Return if is empty or none
+    def is_none_or_empty(self, parameter):
+        return parameter == None or parameter == ""

@@ -1,7 +1,5 @@
-from pydantic import BaseModel
 from pydantic_settings import (BaseSettings, SettingsConfigDict)
 from utils.libs.whoami import Whoami
-from typing import List
 #from services.setting import SettingServiceLocal
 
 class Secrets(BaseSettings):
@@ -15,8 +13,9 @@ class Secrets(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", env_prefix="APP_SECRET_", case_sensitive=False)
     db_url: str
     shared_seed: str
-    def_client_id: str
-    def_client_secret: str
+    default_user: str
+    default_pass: str
+    telegram_token: str
 
 class Config(BaseSettings):
     """App settings parameters.
@@ -29,10 +28,14 @@ class Config(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", env_prefix="APP_", case_sensitive=False)
     name:          str
     env:           str
-    port:          str
+    server_host:   str
+    server_port:   str
     version:       str
     base_path:     str
     docs_path:     str
+    docs_title:    str
+    log_format:    str
+    log_level:     str
     secrets:       Secrets = Secrets()
     whoami:        Whoami = Whoami()
     db:            dict = {}
@@ -40,9 +43,9 @@ class Config(BaseSettings):
     def set_db_settings(self):
         from services.setting import SettingServiceLocal
         self.db = SettingServiceLocal().get_settings()
-        return self.db
 
 config = Config()
+
 try:
     config.set_db_settings()
 except:
