@@ -45,11 +45,11 @@ if __name__ == "__main__":
     app.include_router(RouterBuilder(prefix=config.base_path, endpoints=endpoints))
 
     # Start FastAPI
-    uvicorn_log_config = uvicorn.config.LOGGING_CONFIG
-    del uvicorn_log_config["loggers"]
-    uvicorn.run(
-        app,
-        host=config.server_host,
-        port=int(config.server_port),
-        log_config=uvicorn_log_config,
-    )
+    #uvicorn_log_config = uvicorn.config.LOGGING_CONFIG
+    #del uvicorn_log_config["loggers"]
+    #uvicorn.run(
+    #    app,
+    #    host=config.server_host,
+    #    port=int(config.server_port),
+    #    log_config=uvicorn_log_config,
+    #)
