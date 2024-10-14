@@ -51,7 +51,7 @@ class ExampleService(BaseService):
 class ExampleDataManager(BaseDataManager):
    
     def get_example(self, **kwargs) -> ExampleModel:
-        return self.basic_get_one(ExampleModel, kwargs)
+        return self.basic_get_one_by_args(ExampleModel, **kwargs)
     
     def get_examples(self, page: int, per_page: int, filters: List[dict]) -> PaginationResult:       
         return self.get_paginated(ExampleModel, page=page, per_page=per_page, filters=filters)
@@ -60,13 +60,13 @@ class ExampleDataManager(BaseDataManager):
         return self.basic_create_one(ExampleModel, data)
 
     def delete_example(self, id: int) -> ExampleModel:
-        return self.basic_delete_one(ExampleModel, id)
+        return self.basic_delete_one_by_id(ExampleModel, id)
 
     def delete_examples(self) -> DeletionResult:
         return self.delete_all(ExampleModel)
 
     def update_full_example(self, id: int, data: ExampleSchemaCreation) -> ExampleModel:
-        return self.basic_update_full_one(ExampleModel, id, data)
+        return self.basic_update_full_one_by_id(ExampleModel, id, data)
 
     def update_partial_example(self, id: int, data: ExampleSchemaPartialUpdate) -> ExampleModel:
-        return self.basic_update_partial_one(ExampleModel, id, data)
+        return self.basic_update_partial_one_by_id(ExampleModel, id, data)

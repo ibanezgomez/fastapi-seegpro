@@ -12,24 +12,26 @@ from utils.endpoint import EndpointInstance
 from utils.exceptions import CustomException
 from utils.logger import log
 
-from schemas.auth import ClientSessionSchema, ClientSchema
+from schemas.auth import UserSessionSchema
+from schemas.user import UserSchema
 from schemas.base import PaginationResult, DeletionResult
 
 from schemas.query_filter import validate_filters
 
 class SessionMixin:
     """Provides instance of database session."""
-    def __init__(self, session: Session = None, auth: ClientSessionSchema = None, authorization_func: func = None) -> None:
+    def __init__(self, session: Session = None, auth: UserSessionSchema = None, authorization_func: func = None, roles: list = []) -> None:
         self.session = session
         self.auth    = auth
+        self.roles   = roles
         if authorization_func != None:
             self.authorization_func = authorization_func
         else:
             self.authorization_func = self.isAllowed
 
     @staticmethod
-    def isAllowed(client: ClientSchema):
-        if client: return True
+    def isAllowed(session: UserSessionSchema):
+        if session.user: return True
         else: return False
     
 class BaseService(SessionMixin):
@@ -51,10 +53,10 @@ class BaseService(SessionMixin):
 
     def IsAuthenticated(func):
         def wrapper(self, *args, **kwargs):
-            if self.auth.client and self.authorization_func(self.auth.client):
+            if self.auth.user and self.authorization_func(self.auth, self.roles):
                 return func(self, *args, **kwargs)
             else:
-                raise CustomException(self.auth.errors['detail'], None, 401)
+                raise CustomException(self.auth.errors['detail'], None, self.auth.errors['status_code'])
         return wrapper
 
     def HTTPExceptionHandler(func):
@@ -84,12 +86,17 @@ class BaseDataManager(SessionMixin):
     """Base data manager class responsible for operations over database."""
 
     #Basic CRUD operations
-    def basic_get_one(self, model: Type[SQLModel], **kwargs):
+    def basic_get_one_by_args(self, model: Type[SQLModel], **kwargs):
         stmt = select(model).filter_by(**kwargs)
         model = self.get_one(stmt)
         return model
+    
+    def basic_get_one_by_id(self, model: Type[SQLModel], id):
+        stmt = select(model).where(model.id == id)
+        model = self.get_one(stmt)
+        return model
 
-    def basic_delete_one(self, model: Type[SQLModel], id):
+    def basic_delete_one_by_id(self, model: Type[SQLModel], id):
         stmt = select(model).where(model.id == id)
         model = self.get_one(stmt)
         if model:
@@ -104,7 +111,7 @@ class BaseDataManager(SessionMixin):
         self.add_one(model)
         return model
 
-    def basic_update_full_one(self, model: Type[SQLModel], id, data: BaseModel):
+    def basic_update_full_one_by_id(self, model: Type[SQLModel], id, data: BaseModel):
         stmt = select(model).where(model.id == id)
         model = self.get_one(stmt)
         if model:
@@ -112,7 +119,7 @@ class BaseDataManager(SessionMixin):
         else:
             raise CustomException(f"{model} with id {id} does not exists", None, 404)
     
-    def basic_update_partial_one(self, model: Type[SQLModel], id, data: BaseModel):
+    def basic_update_partial_one_by_id(self, model: Type[SQLModel], id, data: BaseModel):
         stmt = select(model).where(model.id == id)
         model = self.get_one(stmt)
         if model:

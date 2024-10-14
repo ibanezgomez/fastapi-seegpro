@@ -10,7 +10,8 @@ from utils.middlewares import AccessLogMiddleware
 from endpoints.healthcheck import Healthcheck, HealthcheckAuthLocal
 from endpoints.status import Status, StatusDetail
 from endpoints.example import Example, ExampleList
-from endpoints.auth import Auth, Client
+from endpoints.auth import Auth
+from endpoints.user import User
 from endpoints.notification import Notification
 
 #if __name__ == "__main__":
@@ -30,14 +31,14 @@ if not initAndPopulate():
 
 # Endpoints
 endpoints = [
-    Endpoint(methods=['GET'],                           path="/healthcheck-auth-local", instance=HealthcheckAuthLocal()),
+    Endpoint(methods=['POST'],                          path="/login",                  instance=Auth()),
+    Endpoint(methods=['GET', 'POST', 'DELETE'],         path="/examples",               instance=ExampleList()),
+    Endpoint(methods=['GET', 'PUT', 'PATCH', 'DELETE'], path="/examples/{example_id}",  instance=Example()),
+    Endpoint(methods=['POST'],                          path="/users",                  instance=User()),
+    Endpoint(methods=['GET'],                           path="/healthcheck-auth",       instance=HealthcheckAuthLocal()),
     Endpoint(methods=['GET'],                           path="/healthcheck",            instance=Healthcheck()),
     Endpoint(methods=['GET'],                           path="/status",                 instance=Status()),
     Endpoint(methods=['GET'],                           path="/status-detail",          instance=StatusDetail()),
-    Endpoint(methods=['POST'],                          path="/client-local",           instance=Client()),
-    Endpoint(methods=['POST'],                          path="/token-local",            instance=Auth()),
-    Endpoint(methods=['GET', 'POST', 'DELETE'],         path="/examples",               instance=ExampleList()),
-    Endpoint(methods=['GET', 'PUT', 'PATCH', 'DELETE'], path="/examples/{example_id}",  instance=Example()),
     Endpoint(methods=['POST'],                          path="/notification",           instance=Notification())
 ]
 

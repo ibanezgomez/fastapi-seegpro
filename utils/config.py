@@ -13,8 +13,6 @@ class Secrets(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", env_prefix="APP_SECRET_", case_sensitive=False)
     db_url: str
     shared_seed: str
-    default_user: str
-    default_pass: str
     telegram_token: str
 
 class Config(BaseSettings):

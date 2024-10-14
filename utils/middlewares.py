@@ -19,8 +19,8 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
         log_message = f"{http_protocol} {status} {status_text}"
 
         try: 
-            client = remote_addr+'-'+request.state.client.id
+            user = remote_addr+'-'+request.state.user.id
         except: 
-            client = remote_addr+'-unknown'
-        log.info(log_message, action=request_line, client=client)
+            user = remote_addr+'-unknown'
+        log.info(log_message, action=request_line, user=user)
         return response

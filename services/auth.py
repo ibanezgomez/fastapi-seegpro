@@ -1,16 +1,16 @@
 from datetime import datetime, timedelta
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer,  OAuth2PasswordRequestForm
 from jose import jwt, JWTError
-from passlib.context import CryptContext
 from sqlalchemy import select
-from fastapi import Request
+from typing import Optional
 
-from models.client import ClientModel
-from schemas.auth import CreateClientSchema, TokenSchema, ClientSchema, ClientSessionSchema
+from models.user import UserModel
+from schemas.user import UserSchema
+from schemas.auth import TokenSchema, UserSessionSchema
 from services.base import BaseDataManager, BaseService
+from services.user import pwd_context
 from utils.exceptions import CustomException
-from schemas.base import SuccessResponse
 from utils.enums import AuthStatus
 from utils.logger import log
 from utils.config import config as cfg
@@ -20,13 +20,13 @@ API_BASE_PATH = cfg.base_path
 TOKEN_TYPE = "bearer"
 TOKEN_ALGORITHM = "HS256"
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=API_BASE_PATH + "/login", scheme_name="login", auto_error=False)
 
-async def get_current_client(request: Request, token: str = Depends(OAuth2PasswordBearer(tokenUrl=API_BASE_PATH + "/token-local", scheme_name="local_oauth2_schema"))) -> ClientSessionSchema | None:
-    """Decode token to obtain client information.
+async def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_scheme)) -> UserSessionSchema | None:
+    """Decode token to obtain user information.
 
-    Extracts client information from token and verifies expiration time.
-    If token is valid then instance of :class:`~app.schemas.auth.ClientSchema`
+    Extracts user information from token and verifies expiration time.
+    If token is valid then instance of :class:`~app.schemas.user.UserSchema`
     is returned, otherwise exception is raised.
 
     Args:
@@ -34,54 +34,68 @@ async def get_current_client(request: Request, token: str = Depends(OAuth2Passwo
             The token to verify.
 
     Returns:
-        Decoded client dictionary.
+        Decoded user dictionary.
     """
-    client_session = ClientSessionSchema(client=None, status=AuthStatus.UNAUTHENTICATED, expires_at=None, errors={ 'exception': 'UnauthorizedResponse', 'detail': 'Unauthorized' })
+    session = UserSessionSchema(user=None, status=AuthStatus.UNAUTHENTICATED, expires_at=None, errors={ 'detail': '' })
+
     if token is None:
-        client_session.errors['detail'] = "Token not provided"
+        session.errors['detail'] = "Token not provided"
+        session.status = AuthStatus.UNAUTHENTICATED
+        session.errors['status_code'] = 401
     else:
         try:
             payload = jwt.decode(token, TOKEN, algorithms=[TOKEN_ALGORITHM])
+
             # extract encoded information
-            id: str = payload.get("id")
-            desc: str = payload.get("desc")
-            provider: str = payload.get("provider") 
-            permissions: dict = payload.get("permissions")
+            sub: str = payload.get("sub")
             expires_at: str = payload.get("expires_at")
-            if id is None:
-                client_session.errors['detail'] = "Invalid credentials. Status: %s" % (client_session.status.value)
-                log.error(action="[get_current_client]", message=client_session.errors['detail'])
+
+            if sub is None:
+                session.errors['detail'] = "Token not valid"
+                session.status = AuthStatus.INVALID
+                session.errors['status_code'] = 401
             else:
-                client_session.expires_at=datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
+                session.expires_at = datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
                 if is_expired(expires_at):
-                    client_session.errors['detail'] = "Token expired. Status: %s" % (client_session.status.value); client_session.status=AuthStatus.EXPIRED; 
-                    log.error(action="[get_current_client]", message=client_session.errors['detail'])
+                    session.errors['detail'] = "Token expired"
+                    session.status = AuthStatus.EXPIRED
+                    session.errors['status_code'] = 401
                 else:
-                    client_session.errors['exception'] = None; 
-                    client_session.status=AuthStatus.AUTHENTICATED; 
-                    client_session.client=ClientSchema(id=id, desc=desc, permissions=permissions, provider=provider); 
-                    client_session.errors['detail'] = "Identity: %s. Status: %s. Expires in: %s" % (client_session.client.id, client_session.status.value, (datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S") - datetime.utcnow().replace(microsecond=0))); 
-                    log.debug(action="[get_current_client]", message=client_session.errors['detail'])
-                    request.state.client=client_session.client
+                    session.status = AuthStatus.AUTHENTICATED
+                    session.user = UserSchema(**payload, id=sub)
+                    log_message = "Identity: %s. Status: %s. Expires in: %s" % (session.user.id, session.status.value, (datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S") - datetime.utcnow().replace(microsecond=0)))
+                    request.state.user = session.user
+                    log.info(action="[get_current_user]", message=log_message)
         except JWTError:
-            client_session.errors['detail'] = "Token not valid"; client_session.status=AuthStatus.INVALID
-            log.error(action="[get_current_client]", message="Token not valid. Status: %s" % (client_session.status.value))
-    return client_session
+            session.errors['detail'] = "Token not valid"
+            session.status=AuthStatus.INVALID
+            session.errors['status_code'] = 401
+            log.error(action="[get_current_user]", message="Token not valid. Status: %s" % (session.status.value))
+    
+    if session.status != AuthStatus.AUTHENTICATED:
+        log.error(action="[get_current_user]", message="Status: " + session.status + " - Detail: " + session.errors['detail'])
+
+    return session
+
+def validate_roles(session: UserSessionSchema, roles: list):
+    if len(roles) == 0:
+        return True
+    else:
+        if any(r in session.user.roles for r in roles):
+            return True
+        else:
+            session.errors['detail'] = "Access Denieds"
+            session.status=AuthStatus.FORBIDDEN
+            session.errors['status_code'] = 403
+            log.error(action="[validate_roles]", message="Status: " + session.status + " - Detail: " + session.errors['detail'])
+            return
 
 def is_expired(expires_at: str) -> bool:
     """Return :obj:`True` if token has expired."""
-    return datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S") < datetime.utcnow()
+    return datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S") < datetime.now()
 
 #class AuthService(HashingMixin, BaseService):
 class AuthService(BaseService):
-    @BaseService.HTTPExceptionHandler
-    @BaseService.IsAuthenticated
-    def create_client(self, client: CreateClientSchema) -> None:
-        """Add client with hashed password to database."""
-        client_model = ClientModel(id=client.id, desc=client.desc, provider="local", permissions=client.permissions, hashed_password=pwd_context.hash(client.password))
-        AuthDataManager(self.session).add_client(client_model)
-        return SuccessResponse(message="Created!", data={"id":client.id, "desc":client.desc})
-
     @BaseService.HTTPExceptionHandler
     def authenticate(self, login: OAuth2PasswordRequestForm = Depends()) -> TokenSchema | None:
         """Generate token.
@@ -90,38 +104,37 @@ class AuthService(BaseService):
         hashed password stored in database. If valid then temporary
         token is generated, otherwise the corresponding exception is raised.
         """
-        client = AuthDataManager(self.session).get_client(id=login.username)
-        if client.hashed_password is None:
-            raise CustomException("Incorrect password", None,401)
+        user = AuthDataManager(self.session).get_user(id=login.username)
+        if user == None:
+            log.error(action="[authenticate]", message="User not found", user=login.username)
+            raise CustomException("Incorrect credentials", None, 401)
+        
+        if not pwd_context.verify(login.password, user.hashed_password):
+            log.error(action="[authenticate]", message="Invalid password", user=login.username)
+            raise CustomException("Incorrect credentials", None,401)
         else:
-            if not pwd_context.verify(login.password, client.hashed_password):
-                raise CustomException("Incorrect password", None,401)
-            else:
-                access_token = self._create_access_token(client.id, client.desc, client.permissions, client.provider)
-                return TokenSchema(access_token=access_token, token_type=TOKEN_TYPE)
+            access_token = self._create_access_token(user)
+            return TokenSchema(access_token=access_token, token_type=TOKEN_TYPE)
 
-    def _create_access_token(self, id: str, desc: str, permissions: dict, provider: str) -> str:
-        """Encode client information and expiration time."""
-        payload = {"id": id, "desc": desc, "permissions": permissions,"expires_at": self._expiration_time(), "provider": provider}
+    def _create_access_token(self, user: UserModel) -> str:
+        """Encode user information and expiration time."""
+        payload = {
+            "sub": user.id, 
+            "name": user.name, 
+            "surname": user.surname,
+            "expires_at": self._expiration_time(), 
+            "roles": user.roles
+        }
         return jwt.encode(payload, TOKEN, algorithm=TOKEN_ALGORITHM)
 
     @staticmethod
     def _expiration_time() -> str:
         """Get token expiration time."""
-        expires_at = datetime.utcnow() + timedelta(minutes=cfg.db.get("DB_TOKEN_EXPIRATION_TIME"))
+        expires_at = datetime.now() + timedelta(minutes=cfg.db.get("DB_TOKEN_EXPIRATION_TIME"))
         return expires_at.strftime("%Y-%m-%d %H:%M:%S")
 
 class AuthDataManager(BaseDataManager):
-    def add_client(self, client: ClientModel) -> None:
-        """Write client to database."""
-        client.date_created = datetime.utcnow()
-        client.provider = 'local'
-        self.add_one(client)
-
-    def get_client(self, **kwargs) -> ClientSchema:
-        try:
-            stmt = select(ClientModel).filter_by(**kwargs)
-            model = self.get_one(stmt)
-            return ClientSchema(id=model.id, desc=model.desc, date_created=model.date_created, provider=model.provider, permissions=model.permissions, hashed_password=model.hashed_password )
-        except Exception as e:
-            raise CustomException("Client not found", e, 404)
+    def get_user(self, **kwargs) -> UserModel:
+        stmt = select(UserModel).filter_by(**kwargs)
+        model = self.get_one(stmt)
+        return model
