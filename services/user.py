@@ -14,6 +14,8 @@ class UserService(BaseService):
 class UserDataManager(BaseDataManager):
     def create_user(self, user: CreateUserSchema) -> UserModel:
         """Add user with hashed password to database."""
-        user_model = UserModel(**user, hashed_password=pwd_context.hash(user.password))
+        user_dict = user.model_dump()
+        del user_dict["password"]
+        user_model = UserModel(**user_dict, hashed_password=pwd_context.hash(user.password))
         self.add_one(user_model)
         return user_model

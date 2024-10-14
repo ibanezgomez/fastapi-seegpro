@@ -8,7 +8,7 @@ from schemas.auth import UserSessionSchema
 class Healthcheck(EndpointInstance):
     def __init__(self):
         self.path    = "/healthcheck"
-        self.tags    = ['Base']
+        self.tags    = ['Healtcheck']
         self.methods = {
             'GET' : { 'summary': "Healthcheck endpoint", 'description': 'This endpoint is used to check if the app is alive.' }
         }
@@ -19,7 +19,7 @@ class Healthcheck(EndpointInstance):
 class HealthcheckAuthLocal(EndpointInstance):
     def __init__(self):
         self.path    = "/healthcheck-auth"
-        self.tags    = ['Base']
+        self.tags    = ['Healtcheck']
         self.methods = {
             'GET' : { 'summary': "Healthcheck endpoint local auth", 'description': 'This endpoint is used to test local auth.' }
         }

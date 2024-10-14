@@ -32,7 +32,7 @@ class ExampleList(EndpointInstance):
 
     async def DELETE(self, request: Request, session: Session = Depends(createSession), 
                      auth: UserSessionSchema = Depends(get_current_user)):
-        return ExampleService(UserSessionSchema=session, auth=auth, authorization_func=validate_roles, roles=["USER"]).delete_examples()
+        return ExampleService(session=session, auth=auth, authorization_func=validate_roles, roles=["ADMIN"]).delete_examples()
 
 
 class Example(EndpointInstance):
