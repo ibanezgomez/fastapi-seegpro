@@ -6,9 +6,11 @@ from passlib.context import CryptContext
 from sqlalchemy import select
 from fastapi import Request
 
-from models.client import ClientModel
-from schemas.auth import CreateClientSchema, TokenSchema, ClientSchema, ClientSessionSchema
+from models.user import UserModel
+from schemas.user import CreateUserSchema, UserSchema
+from schemas.auth import TokenSchema, UserSessionSchema
 from services.base import BaseDataManager, BaseService
+from services.user import pwd_context
 from utils.exceptions import CustomException
 from schemas.base import SuccessResponse
 from utils.enums import AuthStatus
@@ -20,13 +22,11 @@ API_BASE_PATH = cfg.base_path
 TOKEN_TYPE = "bearer"
 TOKEN_ALGORITHM = "HS256"
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+async def get_current_user(request: Request, token: str = Depends(OAuth2PasswordBearer(tokenUrl=API_BASE_PATH + "/login", scheme_name="login"))) -> UserSessionSchema | None:
+    """Decode token to obtain user information.
 
-async def get_current_client(request: Request, token: str = Depends(OAuth2PasswordBearer(tokenUrl=API_BASE_PATH + "/token-local", scheme_name="local_oauth2_schema"))) -> ClientSessionSchema | None:
-    """Decode token to obtain client information.
-
-    Extracts client information from token and verifies expiration time.
-    If token is valid then instance of :class:`~app.schemas.auth.ClientSchema`
+    Extracts user information from token and verifies expiration time.
+    If token is valid then instance of :class:`~app.schemas.user.UserSchema`
     is returned, otherwise exception is raised.
 
     Args:
@@ -34,11 +34,11 @@ async def get_current_client(request: Request, token: str = Depends(OAuth2Passwo
             The token to verify.
 
     Returns:
-        Decoded client dictionary.
+        Decoded user dictionary.
     """
-    client_session = ClientSessionSchema(client=None, status=AuthStatus.UNAUTHENTICATED, expires_at=None, errors={ 'exception': 'UnauthorizedResponse', 'detail': 'Unauthorized' })
+    session = UserSessionSchema(user=None, status=AuthStatus.UNAUTHENTICATED, expires_at=None, errors={ 'exception': 'UnauthorizedResponse', 'detail': 'Unauthorized' })
     if token is None:
-        client_session.errors['detail'] = "Token not provided"
+        session.errors['detail'] = "Token not provided"
     else:
         try:
             payload = jwt.decode(token, TOKEN, algorithms=[TOKEN_ALGORITHM])
@@ -49,24 +49,30 @@ async def get_current_client(request: Request, token: str = Depends(OAuth2Passwo
             permissions: dict = payload.get("permissions")
             expires_at: str = payload.get("expires_at")
             if id is None:
-                client_session.errors['detail'] = "Invalid credentials. Status: %s" % (client_session.status.value)
-                log.error(action="[get_current_client]", message=client_session.errors['detail'])
+                session.errors['detail'] = "Invalid credentials. Status: %s" % (session.status.value)
+                log.error(action="[get_current_user]", message=session.errors['detail'])
             else:
-                client_session.expires_at=datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
+                session.expires_at=datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
                 if is_expired(expires_at):
-                    client_session.errors['detail'] = "Token expired. Status: %s" % (client_session.status.value); client_session.status=AuthStatus.EXPIRED; 
-                    log.error(action="[get_current_client]", message=client_session.errors['detail'])
+                    session.errors['detail'] = "Token expired. Status: %s" % (session.status.value); session.status=AuthStatus.EXPIRED; 
+                    log.error(action="[get_current_user]", message=session.errors['detail'])
                 else:
-                    client_session.errors['exception'] = None; 
-                    client_session.status=AuthStatus.AUTHENTICATED; 
-                    client_session.client=ClientSchema(id=id, desc=desc, permissions=permissions, provider=provider); 
-                    client_session.errors['detail'] = "Identity: %s. Status: %s. Expires in: %s" % (client_session.client.id, client_session.status.value, (datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S") - datetime.utcnow().replace(microsecond=0))); 
-                    log.debug(action="[get_current_client]", message=client_session.errors['detail'])
-                    request.state.client=client_session.client
+                    session.errors['exception'] = None; 
+                    session.status = AuthStatus.AUTHENTICATED; 
+                    session.user = UserSchema(id=id, desc=desc, permissions=permissions, provider=provider); 
+                    session.errors['detail'] = "Identity: %s. Status: %s. Expires in: %s" % (session.user.id, session.status.value, (datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S") - datetime.utcnow().replace(microsecond=0))); 
+                    log.debug(action="[get_current_user]", message=session.errors['detail'])
+                    request.state.user = session.user
         except JWTError:
-            client_session.errors['detail'] = "Token not valid"; client_session.status=AuthStatus.INVALID
-            log.error(action="[get_current_client]", message="Token not valid. Status: %s" % (client_session.status.value))
-    return client_session
+            session.errors['detail'] = "Token not valid"; session.status=AuthStatus.INVALID
+            log.error(action="[get_current_user]", message="Token not valid. Status: %s" % (session.status.value))
+    return session
+
+def validate_roles(session: UserSessionSchema, roles: list):
+    if len(roles) == 0:
+        return True
+    else:
+        return any(r in session.user.roles for r in roles)
 
 def is_expired(expires_at: str) -> bool:
     """Return :obj:`True` if token has expired."""
@@ -75,14 +81,6 @@ def is_expired(expires_at: str) -> bool:
 #class AuthService(HashingMixin, BaseService):
 class AuthService(BaseService):
     @BaseService.HTTPExceptionHandler
-    @BaseService.IsAuthenticated
-    def create_client(self, client: CreateClientSchema) -> None:
-        """Add client with hashed password to database."""
-        client_model = ClientModel(id=client.id, desc=client.desc, provider="local", permissions=client.permissions, hashed_password=pwd_context.hash(client.password))
-        AuthDataManager(self.session).add_client(client_model)
-        return SuccessResponse(message="Created!", data={"id":client.id, "desc":client.desc})
-
-    @BaseService.HTTPExceptionHandler
     def authenticate(self, login: OAuth2PasswordRequestForm = Depends()) -> TokenSchema | None:
         """Generate token.
 
@@ -90,19 +88,25 @@ class AuthService(BaseService):
         hashed password stored in database. If valid then temporary
         token is generated, otherwise the corresponding exception is raised.
         """
-        client = AuthDataManager(self.session).get_client(id=login.username)
-        if client.hashed_password is None:
+        user = AuthDataManager(self.session).get_user(id=login.username)
+        if user.hashed_password is None:
             raise CustomException("Incorrect password", None,401)
         else:
-            if not pwd_context.verify(login.password, client.hashed_password):
+            if not pwd_context.verify(login.password, user.hashed_password):
                 raise CustomException("Incorrect password", None,401)
             else:
-                access_token = self._create_access_token(client.id, client.desc, client.permissions, client.provider)
+                access_token = self._create_access_token(user)
                 return TokenSchema(access_token=access_token, token_type=TOKEN_TYPE)
 
-    def _create_access_token(self, id: str, desc: str, permissions: dict, provider: str) -> str:
-        """Encode client information and expiration time."""
-        payload = {"id": id, "desc": desc, "permissions": permissions,"expires_at": self._expiration_time(), "provider": provider}
+    def _create_access_token(self, user: UserModel) -> str:
+        """Encode user information and expiration time."""
+        payload = {
+            "sub": user.id, 
+            "name": user.name, 
+            "surname": user.surname,
+            "expires_at": self._expiration_time(), 
+            "roles": user.roles
+        }
         return jwt.encode(payload, TOKEN, algorithm=TOKEN_ALGORITHM)
 
     @staticmethod
@@ -112,16 +116,10 @@ class AuthService(BaseService):
         return expires_at.strftime("%Y-%m-%d %H:%M:%S")
 
 class AuthDataManager(BaseDataManager):
-    def add_client(self, client: ClientModel) -> None:
-        """Write client to database."""
-        client.date_created = datetime.utcnow()
-        client.provider = 'local'
-        self.add_one(client)
-
-    def get_client(self, **kwargs) -> ClientSchema:
+    def get_user(self, **kwargs) -> UserModel:
         try:
-            stmt = select(ClientModel).filter_by(**kwargs)
+            stmt = select(UserModel).filter_by(**kwargs)
             model = self.get_one(stmt)
-            return ClientSchema(id=model.id, desc=model.desc, date_created=model.date_created, provider=model.provider, permissions=model.permissions, hashed_password=model.hashed_password )
+            return model
         except Exception as e:
-            raise CustomException("Client not found", e, 404)
+            raise CustomException("User not found", e, 404)

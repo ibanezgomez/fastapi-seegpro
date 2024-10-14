@@ -1,11 +1,11 @@
 import json
 from utils.config import config
 from sqlalchemy import exc
-from services.auth import pwd_context
+from services.user import pwd_context
 from models.base import SQLModel
 from models.example import ExampleModel
 from models.setting import SettingModel
-from models.client import ClientModel
+from models.user import UserModel
 from utils.logger import log
 from utils.session import SessionFactory, getEngine
 
@@ -52,12 +52,21 @@ def initAndPopulate():
 
 ##### INITIAL DATA #####
 initialData = {
-    "ClientModel": [
-        ClientModel(id=config.secrets.default_user, desc="Usuario default", provider="local", permissions={}, 
-                    hashed_password=pwd_context.hash(config.secrets.default_pass))
+    "UserModel": [
+        UserModel(id="jmiralco", name="Jordi", surname="Miralles", roles=["ADMIN", "USER"], hashed_password=pwd_context.hash("jmiralco123")),
+        UserModel(id="sibanego", name="Samuel", surname="Ibañez", roles=["USER"], hashed_password=pwd_context.hash("sibanego123"))
     ],
     "ExampleModel": [
-        ExampleModel(id=1, name="Example1", description="Is an example", active=True)
+        ExampleModel(id=1, name="Example1", description="Is an example", active=True),
+        ExampleModel(id=2, name="Example2", description="Is an example new", active=True),
+        ExampleModel(id=3, name="Example3", description="Is another example", active=False),
+        ExampleModel(id=4, name="Example4", description="Is a new example", active=True),
+        ExampleModel(id=5, name="Example5", description="Is an example? Maybe", active=False),
+        ExampleModel(id=6, name="Example6", description="Is a good example", active=True),
+        ExampleModel(id=7, name="Example7", description="Is an example interesting", active=True),
+        ExampleModel(id=8, name="Example8", description="Is an example of how to make examples", active=True),
+        ExampleModel(id=9, name="Example9", description="Example is", active=False),
+        ExampleModel(id=10, name="Example10", description="Not an example", active=True),
     ]
 }
 

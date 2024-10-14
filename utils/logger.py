@@ -16,7 +16,7 @@ class Logger:
         self.level    = None
         self.format   = None
         self.instance = None
-        self.client   = None
+        self.user   = None
         self.setup(level=config.log_level, format=config.log_format)
 
     def _getJSONLogger(self):
@@ -36,7 +36,7 @@ class Logger:
     def _getSTDOutLogger(self):
         log_stdout = logging.getLogger("sysloger")
         log_stdout.setLevel(self.level)
-        formatter = logging.Formatter("\033[0m%(asctime)s - \033[95m[client: \033[0m%(client)s\033[95m]\033[0m - \033[92m%(levelname)s\033[0m - \033[92m%(action)s\033[0m - \033[0m\033[97m%(message)s\033[0m")        
+        formatter = logging.Formatter("\033[0m%(asctime)s - \033[95m[user: \033[0m%(user)s\033[95m]\033[0m - \033[92m%(levelname)s\033[0m - \033[92m%(action)s\033[0m - \033[0m\033[97m%(message)s\033[0m")        
         streamhandler = logging.StreamHandler()
         streamhandler.setLevel(self.level)
         streamhandler.setFormatter(formatter)
@@ -50,8 +50,8 @@ class Logger:
             else: res=logging.ERROR
         return res
 
-    def setClient(self, client: str):
-        self.client=client
+    def setUser(self, user: str):
+        self.user=user
 
 
     def setup(self, format: str = None, level: str = None):
@@ -72,15 +72,15 @@ class Logger:
         else:
             return self._getSTDOutLogger()
 
-    def _handle_log_record(self, level, message, client=None, action=None):
+    def _handle_log_record(self, level, message, user=None, action=None):
         if self.format == 'string': 
             streamhandler = logging.StreamHandler()
             if level == logging.ERROR:
-                formatter = logging.Formatter("\033[0m%(asctime)s - \033[95m[client: \033[0m%(client)s\033[95m]\033[0m - \033[91m%(levelname)s\033[0m - \033[92m%(action)s\033[0m - \033[0m\033[97m%(message)s\033[0m")
+                formatter = logging.Formatter("\033[0m%(asctime)s - \033[95m[user: \033[0m%(user)s\033[95m]\033[0m - \033[91m%(levelname)s\033[0m - \033[92m%(action)s\033[0m - \033[0m\033[97m%(message)s\033[0m")
             elif level == logging.DEBUG:
-                formatter = logging.Formatter("\033[0m%(asctime)s - \033[95m[client: \033[0m%(client)s\033[95m]\033[0m - \033[93m%(levelname)s\033[0m - \033[92m%(action)s\033[0m - \033[0m\033[97m%(message)s\033[0m")
+                formatter = logging.Formatter("\033[0m%(asctime)s - \033[95m[user: \033[0m%(user)s\033[95m]\033[0m - \033[93m%(levelname)s\033[0m - \033[92m%(action)s\033[0m - \033[0m\033[97m%(message)s\033[0m")
             else: #INFO
-                formatter = logging.Formatter("\033[0m%(asctime)s - \033[95m[client: \033[0m%(client)s\033[95m]\033[0m - \033[92m%(levelname)s\033[0m - \033[92m%(action)s\033[0m - \033[0m\033[97m%(message)s\033[0m")
+                formatter = logging.Formatter("\033[0m%(asctime)s - \033[95m[user: \033[0m%(user)s\033[95m]\033[0m - \033[92m%(levelname)s\033[0m - \033[92m%(action)s\033[0m - \033[0m\033[97m%(message)s\033[0m")
             self.clear_handlers()
             streamhandler.setFormatter(formatter)
             self.instance.addHandler(streamhandler)
@@ -94,20 +94,20 @@ class Logger:
             None,
             None
         )
-        if client!=None: log_record.client = client
-        else: log_record.client = self.client
+        if user!=None: log_record.user = user
+        else: log_record.user = self.user
     
         log_record.action = action
 
         self.instance.handle(log_record)
 
-    def debug(self, message, client=None, action=None):
-        self._handle_log_record(logging.DEBUG, message, client, action)
+    def debug(self, message, user=None, action=None):
+        self._handle_log_record(logging.DEBUG, message, user, action)
 
-    def info(self, message, client=None, action=None):
-        self._handle_log_record(logging.INFO, message, client, action)
+    def info(self, message, user=None, action=None):
+        self._handle_log_record(logging.INFO, message, user, action)
 
-    def error(self, message, client=None, action=None):
-        self._handle_log_record(logging.ERROR, message, client, action)
+    def error(self, message, user=None, action=None):
+        self._handle_log_record(logging.ERROR, message, user, action)
 
 log = Logger()
