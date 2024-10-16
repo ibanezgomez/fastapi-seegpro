@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 from datetime import datetime
 from schemas.base import PaginationResult, SuccessResponse
@@ -34,3 +34,11 @@ class CreateUserSchema(BaseModel):
     surname: str
     roles: List[str]
     password: str
+
+class UserSchemaPartialUpdate(BaseModel):
+    name: str | None = Field(default=None)
+    surname: str | None = Field(default=None)
+    roles: List[str] | None = Field(default=None)
+    hashed_password: str | None = Field(default=None)
+    biometric_challenge: str | None = Field(default=None)
+    biometric_credential: str | None = Field(default=None)

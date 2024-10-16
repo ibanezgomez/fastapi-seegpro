@@ -12,6 +12,7 @@ from endpoints.status import Status, StatusDetail
 from endpoints.example import Example, ExampleList
 from endpoints.auth import Auth
 from endpoints.user import User
+from endpoints.biometric import BiometricLogin, BiometricRegister, BiometricChallenge
 from endpoints.notification import Notification
 
 #if __name__ == "__main__":
@@ -32,6 +33,9 @@ if not initAndPopulate():
 # Endpoints
 endpoints = [
     Endpoint(methods=['POST'],                          path="/login",                  instance=Auth()),
+    Endpoint(methods=['POST'],                          path="/biometric/login",        instance=BiometricLogin()),
+    Endpoint(methods=['GET'],                           path="/biometric/challenge",    instance=BiometricChallenge()),
+    Endpoint(methods=['POST'],                          path="/biometric/register",     instance=BiometricRegister()),
     Endpoint(methods=['GET', 'POST', 'DELETE'],         path="/examples",               instance=ExampleList()),
     Endpoint(methods=['GET', 'PUT', 'PATCH', 'DELETE'], path="/examples/{example_id}",  instance=Example()),
     Endpoint(methods=['POST'],                          path="/users",                  instance=User()),
