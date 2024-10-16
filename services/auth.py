@@ -2,14 +2,14 @@ from datetime import datetime, timedelta
 from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer,  OAuth2PasswordRequestForm
 from jose import jwt, JWTError
-from sqlalchemy import select
 from typing import Optional
 
 from models.user import UserModel
 from schemas.user import UserSchema
 from schemas.auth import TokenSchema, UserSessionSchema
-from services.base import BaseDataManager, BaseService
-from services.user import pwd_context
+from services.base import BaseService
+from services.user import UserDataManager
+from utils.crypto import bcrypt_verify
 from utils.exceptions import CustomException
 from utils.enums import AuthStatus
 from utils.logger import log
@@ -104,12 +104,12 @@ class AuthService(BaseService):
         hashed password stored in database. If valid then temporary
         token is generated, otherwise the corresponding exception is raised.
         """
-        user = AuthDataManager(self.session).get_user(id=login.username)
+        user = UserDataManager(self.session).get_user(id=login.username)
         if user == None:
             log.error(action="[authenticate]", message="User not found", user=login.username)
             raise CustomException("Incorrect credentials", None, 401)
         
-        if not pwd_context.verify(login.password, user.hashed_password):
+        if not bcrypt_verify(login.password, user.hashed_password):
             log.error(action="[authenticate]", message="Invalid password", user=login.username)
             raise CustomException("Incorrect credentials", None,401)
         else:
@@ -131,10 +131,4 @@ class AuthService(BaseService):
     def _expiration_time() -> str:
         """Get token expiration time."""
         expires_at = datetime.now() + timedelta(minutes=cfg.db.get("DB_TOKEN_EXPIRATION_TIME"))
-        return expires_at.strftime("%Y-%m-%d %H:%M:%S")
-
-class AuthDataManager(BaseDataManager):
-    def get_user(self, **kwargs) -> UserModel:
-        stmt = select(UserModel).filter_by(**kwargs)
-        model = self.get_one(stmt)
-        return model
+        return expires_at.strftime("%Y-%m-%d %H:%M:%S")    

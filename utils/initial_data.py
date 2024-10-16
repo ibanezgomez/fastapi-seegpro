@@ -1,13 +1,13 @@
 import json
 from utils.config import config
 from sqlalchemy import exc
-from services.user import pwd_context
 from models.base import SQLModel
 from models.example import ExampleModel
 from models.setting import SettingModel
 from models.user import UserModel
 from utils.logger import log
 from utils.session import SessionFactory, getEngine
+from utils.crypto import bcrypt_hash
 
 def initAndPopulate():
 
@@ -53,8 +53,8 @@ def initAndPopulate():
 ##### INITIAL DATA #####
 initialData = {
     "UserModel": [
-        UserModel(id="jmiralco", name="Jordi", surname="Miralles", roles=["ADMIN", "USER"], hashed_password=pwd_context.hash("jmiralco123")),
-        UserModel(id="sibanego", name="Samuel", surname="Ibañez", roles=["USER"], hashed_password=pwd_context.hash("sibanego123"))
+        UserModel(id="jmiralco", name="Jordi", surname="Miralles", roles=["ADMIN", "USER"], hashed_password=bcrypt_hash("jmiralco123")),
+        UserModel(id="sibanego", name="Samuel", surname="Ibañez", roles=["USER"], hashed_password=bcrypt_hash("sibanego123"))
     ],
     "ExampleModel": [
         ExampleModel(id=1, name="Example1", description="Is an example", active=True),
