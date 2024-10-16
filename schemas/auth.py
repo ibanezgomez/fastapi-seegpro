@@ -4,6 +4,10 @@ from utils.enums import AuthStatus
 from datetime import datetime
 from schemas.user import UserSchema
 
+class LoginSchema(BaseModel):
+    username: str
+    password: str
+
 class TokenSchema(BaseModel):
     access_token: str
     token_type: str

@@ -12,6 +12,7 @@ from fido2.webauthn import *
 from fido2.features import webauthn_json_mapping
 from fido2.utils import websafe_encode, websafe_decode
 import base64
+from fastapi import Response
 
 rp = PublicKeyCredentialRpEntity("localhost", "localhost")
 not_verify_origin = lambda x: True
@@ -39,7 +40,7 @@ class BiometricService(BaseService):
                 )
             )
 
-            challenge_base64 = base64.urlsafe_b64encode(challenge_options.public_key.challenge).decode("utf-8")
+            challenge_base64 = base64.b64encode(challenge_options.public_key.challenge).decode("utf-8")
             
             result = {
                 "timeout": CHALLENGE_TIMEOUT,
@@ -101,7 +102,7 @@ class BiometricService(BaseService):
             raise CustomException("There was an error storing FIDO2 credentials", None, 400)
 
     @BaseService.HTTPExceptionHandler
-    def login_biometric(self, login: BiometricLoginSchema) -> TokenSchema | None:
+    def login_biometric(self, response: Response, login: BiometricLoginSchema) -> TokenSchema | None:
         user = UserDataManager(self.session).get_user(biometric_challenge=login.challenge)
 
         if not user:
@@ -134,5 +135,4 @@ class BiometricService(BaseService):
             log.error(action="[login_biometric]", message=f"FIDO2 login error. Exception: {e}")
             raise CustomException("There was an error in login with FIDO2 credentials", None, 400)
 
-        access_token = AuthService()._create_access_token(user)
-        return TokenSchema(access_token=access_token, token_type=TOKEN_TYPE)
+        return AuthService()._create_access_token(response, user)
