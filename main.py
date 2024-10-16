@@ -10,7 +10,7 @@ from utils.middlewares import AccessLogMiddleware
 from endpoints.healthcheck import Healthcheck, HealthcheckAuthLocal
 from endpoints.status import Status, StatusDetail
 from endpoints.example import Example, ExampleList
-from endpoints.auth import Auth
+from endpoints.auth import Auth, AuthSwagger
 from endpoints.user import User
 from endpoints.biometric import BiometricLogin, BiometricRegister, BiometricChallenge
 from endpoints.notification import Notification
@@ -33,6 +33,7 @@ if not initAndPopulate():
 # Endpoints
 endpoints = [
     Endpoint(methods=['POST'],                          path="/login",                  instance=Auth()),
+    Endpoint(methods=['POST'],                          path="/login-form",             instance=AuthSwagger()),
     Endpoint(methods=['POST'],                          path="/biometric/login",        instance=BiometricLogin()),
     Endpoint(methods=['GET'],                           path="/biometric/challenge",    instance=BiometricChallenge()),
     Endpoint(methods=['POST'],                          path="/biometric/register",     instance=BiometricRegister()),

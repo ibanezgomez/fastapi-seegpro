@@ -3,10 +3,10 @@ from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer,  OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from typing import Optional
-
+from fastapi import Response
 from models.user import UserModel
 from schemas.user import UserSchema
-from schemas.auth import TokenSchema, UserSessionSchema
+from schemas.auth import TokenSchema, UserSessionSchema, LoginSchema
 from services.base import BaseService
 from services.user import UserDataManager
 from utils.crypto import bcrypt_verify
@@ -20,7 +20,7 @@ API_BASE_PATH = cfg.base_path
 TOKEN_TYPE = "bearer"
 TOKEN_ALGORITHM = "HS256"
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=API_BASE_PATH + "/login", scheme_name="login", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=API_BASE_PATH + "/login-form", scheme_name="login", auto_error=False)
 
 async def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_scheme)) -> UserSessionSchema | None:
     """Decode token to obtain user information.
@@ -97,13 +97,7 @@ def is_expired(expires_at: str) -> bool:
 #class AuthService(HashingMixin, BaseService):
 class AuthService(BaseService):
     @BaseService.HTTPExceptionHandler
-    def authenticate(self, login: OAuth2PasswordRequestForm = Depends()) -> TokenSchema | None:
-        """Generate token.
-
-        Obtains username and password and verifies password against
-        hashed password stored in database. If valid then temporary
-        token is generated, otherwise the corresponding exception is raised.
-        """
+    def authenticate(self, response: Response, login: LoginSchema) -> TokenSchema | None:
         user = UserDataManager(self.session).get_user(id=login.username)
         if user == None:
             log.error(action="[authenticate]", message="User not found", user=login.username)
@@ -113,10 +107,9 @@ class AuthService(BaseService):
             log.error(action="[authenticate]", message="Invalid password", user=login.username)
             raise CustomException("Incorrect credentials", None,401)
         else:
-            access_token = self._create_access_token(user)
-            return TokenSchema(access_token=access_token, token_type=TOKEN_TYPE)
+            return self._create_access_token(response, user)
 
-    def _create_access_token(self, user: UserModel) -> str:
+    def _create_access_token(self, response: Response, user: UserModel) -> str:
         """Encode user information and expiration time."""
         payload = {
             "sub": user.id, 
@@ -125,7 +118,13 @@ class AuthService(BaseService):
             "expires_at": self._expiration_time(), 
             "roles": user.roles
         }
-        return jwt.encode(payload, TOKEN, algorithm=TOKEN_ALGORITHM)
+        token = jwt.encode(payload, TOKEN, algorithm=TOKEN_ALGORITHM)
+
+        #Add as header also for FWK Front
+        response.headers["Authorization"] = token
+        response.headers["Access-Control-Expose-Headers"] = "Authorization"
+
+        return TokenSchema(access_token=token, token_type=TOKEN_TYPE)
 
     @staticmethod
     def _expiration_time() -> str:

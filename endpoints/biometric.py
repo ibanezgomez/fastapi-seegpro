@@ -41,9 +41,4 @@ class BiometricLogin(EndpointInstance):
         }
     
     async def POST(self, response: Response, login: BiometricLoginSchema, session: Session = Depends(createSession)) -> TokenSchema | None:
-        token_schema: TokenSchema = BiometricService(session).login_biometric(login=login)
-
-        #Add as header also for FWK Front
-        # response.headers["Authorization"] = token_schema.access_token
-        
-        return token_schema
+        return BiometricService(session).login_biometric(response=response, login=login)
